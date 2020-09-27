@@ -1,3 +1,6 @@
+#Student Name: Summer Ray
+#Panther ID: 6230850
+
 import socket
 import random
 from time import sleep
