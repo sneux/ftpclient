@@ -1,0 +1,151 @@
+import socket
+MAX_BYTES = 1024
+port = 31337
+
+
+def connect(hostname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ip_address = socket.gethostbyname(hostname)
+    s.connect((ip_address, 21))
+    print(s.recv(MAX_BYTES))
+    return s
+
+
+def login(s):
+    s.send(b"USER demo\n")
+    print(s.recv(MAX_BYTES))
+    s.send(b"PASS demopass\n")
+    print(s.recv(MAX_BYTES))
+
+
+def list_directory_passive(s):
+    s.send(b"PASV\r\n")
+    reply = s.recv(MAX_BYTES)
+    print(reply)
+    data_response = re.findall('\((.*\))', reply.decode())[0].split(")")[0]
+    data_port = int(data_response.split(',')[4]) * 256 + int(data_response.split(',')[5])
+    data_ip = ".".join(data_response.split(",")[0:4])
+    print(data_ip, data_port)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.connect((data_ip, data_port))
+    s.send(b"LIST *\r\n")
+    print("RESPONSE", r.recv(MAX_BYTES))
+    r.close()
+
+
+def get_file(s, r, fileName):
+    s.send(b"PASV\r\n")
+    print("Send pasv")
+    reply = s.recv(MAX_BYTES)
+    print(reply)
+    data_response = re.findall('\((.*\))', reply.decode())[0].split(")")[0]
+    data_port = int(data_response.split(',')[4]) * 256 + int(data_response.split(',')[5])
+    data_ip = ".".join(data_response.split(",")[0:4])
+    print(data_ip, data_port)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.connect((data_ip, data_port))
+    print("R connected")
+    s.send(b"RETR upload.txt\r\n")
+    print(s.recv(MAX_BYTES))
+    output_file = open(fileName, "wb")
+    while True:
+        buffer = r.recv(1024)
+        print(buffer)
+        if buffer == b"":
+            break
+        output_file.write(buffer)
+    print("File received")
+#     return r
+
+
+def get_data_connection(s):
+    s.send(b"PASV\r\n")
+    print("Send pasv")
+    reply = s.recv(MAX_BYTES)
+    print(reply)
+    data_response = re.findall('\((.*\))', reply.decode())[0].split(")")[0]
+    data_port = int(data_response.split(',')[4]) * 256 + int(data_response.split(',')[5])
+    data_ip = ".".join(data_response.split(",")[0:4])
+    print(data_ip, data_port)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.connect((data_ip, data_port))
+    print("R connected")
+    return r
+
+
+def put_file(s, r):
+    s.send(b"PASV\r\n")
+    print("Send pasv")
+    reply = s.recv(MAX_BYTES)
+    print(reply)
+    data_response = re.findall('\((.*\))', reply.decode())[0].split(")")[0]
+    data_port = int(data_response.split(',')[4]) * 256 + int(data_response.split(',')[5])
+    data_ip = ".".join(data_response.split(",")[0:4])
+    print(data_ip, data_port)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.connect((data_ip, data_port))
+    print("R connected")
+    s.send(b"STOR upload.txt\r\n")
+    output_file = open("upload.txt", "r")
+    while True:
+        print('reading bytes...')
+        buffer = output_file.read(MAX_BYTES)
+        r.sendall(bytes(buffer, encoding='utf-8'))
+        if buffer == "":
+            break
+    print("File sent")
+    r.send(b"QUIT\r\n")
+
+
+def delete_file(s, fileName):
+    s.send(b"PASV\r\n")
+    print("Send pasv")
+    reply = s.recv(MAX_BYTES)
+    print(reply)
+    data_response = re.findall('\((.*\))', reply.decode())[0].split(")")[0]
+    data_port = int(data_response.split(',')[4]) * 256 + int(data_response.split(',')[5])
+    data_ip = ".".join(data_response.split(",")[0:4])
+    print(data_ip, data_port)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.connect((data_ip, data_port))
+    print("R connected")
+    s.send(b"DELE \r\n", fileName)
+    print("File deleted")
+    r.send(b"QUIT\r\n")
+    print("quit?")
+
+
+def change_directory(s, directory):
+    s.send(b"CWD " + bytes(directory, encoding='utf-8') + b"\r\n")
+    reply = s.recv(MAX_BYTES)
+    print("RESPONSE:", reply)
+
+
+def create_dataport(s):
+    port = 31338 + random.randint(1,1000)
+    r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    r.bind((socket.gethostbyname(socket.gethostname()), port))
+    r.listen(1)
+    return r, port
+
+
+s = connect("inet.cs.fiu.edu")
+login(s)
+put_file(s, r)
+s.close()
+sleep(1)
+
+s = connect("inet.cs.fiu.edu")
+login(s)
+delete_file(s, "output_file.txt")
+s.close()
+
+s = connect("inet.cs.fiu.edu")
+login(s)
+change_directory(s, "lol")
+s.close()
+
+s = connect("inet.cs.fiu.edu")
+login(s)
+list_directory_passive(s)
+s.close()
