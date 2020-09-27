@@ -1,10 +1,14 @@
 import socket
+import random
+from time import sleep
+import re
 MAX_BYTES = 1024
-port = 31337
+port = 21
 
 
-def connect(hostname):
+def connect():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    hostname = input(str("Enter host name: "))
     ip_address = socket.gethostbyname(hostname)
     s.connect((ip_address, 21))
     print(s.recv(MAX_BYTES))
@@ -33,7 +37,7 @@ def list_directory_passive(s):
     r.close()
 
 
-def get_file(s, r, fileName):
+def get_file(s, r):
     s.send(b"PASV\r\n")
     print("Send pasv")
     reply = s.recv(MAX_BYTES)
@@ -47,7 +51,8 @@ def get_file(s, r, fileName):
     print("R connected")
     s.send(b"RETR upload.txt\r\n")
     print(s.recv(MAX_BYTES))
-    output_file = open(fileName, "wb")
+    outputFile = input(str("Enter file name: "))
+    output_file = open(outputFile, "wb")
     while True:
         buffer = r.recv(1024)
         print(buffer)
@@ -97,7 +102,7 @@ def put_file(s, r):
     r.send(b"QUIT\r\n")
 
 
-def delete_file(s, fileName):
+def delete_file(s):
     s.send(b"PASV\r\n")
     print("Send pasv")
     reply = s.recv(MAX_BYTES)
@@ -109,6 +114,7 @@ def delete_file(s, fileName):
     r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     r.connect((data_ip, data_port))
     print("R connected")
+    fileName = input(str("Enter file name: "))
     s.send(b"DELE \r\n", fileName)
     print("File deleted")
     r.send(b"QUIT\r\n")
@@ -129,23 +135,24 @@ def create_dataport(s):
     return r, port
 
 
-s = connect("inet.cs.fiu.edu")
+
+s = connect()
+login(s)
+list_directory_passive(s)
+s.close()
+
+s = connect()
+login(s)
+change_directory(s, "diffdirectory")
+s.close()
+
+s = connect()
+login(s)
+delete_file(s)
+s.close()
+
+s = connect()
 login(s)
 put_file(s, r)
 s.close()
 sleep(1)
-
-s = connect("inet.cs.fiu.edu")
-login(s)
-delete_file(s, "output_file.txt")
-s.close()
-
-s = connect("inet.cs.fiu.edu")
-login(s)
-change_directory(s, "lol")
-s.close()
-
-s = connect("inet.cs.fiu.edu")
-login(s)
-list_directory_passive(s)
-s.close()
